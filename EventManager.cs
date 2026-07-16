@@ -37,6 +37,15 @@ namespace EventHUD
 
             RpModuleManager.Instance.OnEventRpChanged(rpType);
             NotifyRaActivity();
+
+            // Send to Discord bot
+            DiscordBotService.SendPrepare(eventName, rpType, Session.HostNickname);
+            
+            // Also keep webhook for backward compatibility
+            DiscordWebhookService.Send(
+                $"Идёт подготовка ивента: {Session.EventName}\n" +
+                $"{Session.HostNickname} | Игроки на сервере: {DiscordWebhookService.OnlineCount} | {Session.RpType.GetShortName()}\n" +
+                DiscordWebhookService.GetRolePing(Session.RpType));
         }
 
         public bool Start(Player invoker, RPType? rpType, string eventName, out string message)
@@ -60,6 +69,11 @@ namespace EventHUD
                 Session.HostIsOnline = true;
             }
 
+            // Время подготовки — до обновления Session.StartedAt
+            TimeSpan prepTime = Session.StartedAt == default
+                ? TimeSpan.Zero
+                : DateTime.UtcNow - Session.StartedAt;
+
             Session.State     = EventState.Starting;
             Session.StartedAt = DateTime.UtcNow;
 
@@ -72,6 +86,16 @@ namespace EventHUD
             _transitionHandle = Timing.RunCoroutine(TransitionToRunning());
 
             message = $"Ивент запущен: {Session.EventName} [{Session.RpType.GetShortName()}]";
+
+            // Send to Discord bot
+            DiscordBotService.SendStart(Session.EventName, Session.RpType, Session.HostNickname, prepTime);
+            
+            // Also keep webhook for backward compatibility
+            DiscordWebhookService.Send(
+                "Начался ивент!\n" +
+                $"{Session.EventName} | {Session.RpType.GetShortName()} | Игроки на сервере: {DiscordWebhookService.OnlineCount} | Время подготовки: {DiscordWebhookService.FormatTimeSpan(prepTime)} | {Session.HostNickname}\n" +
+                "Удачной игры.");
+
             return true;
         }
 
@@ -104,6 +128,19 @@ namespace EventHUD
             _stopHandle = Timing.RunCoroutine(ClearAfterStop());
 
             message = "Ивент остановлен.";
+
+            TimeSpan duration = Session.StartedAt == default
+                ? TimeSpan.Zero
+                : Session.StoppedAt - Session.StartedAt;
+
+            // Send to Discord bot
+            DiscordBotService.SendStop(Session.EventName, Session.RpType, Session.HostNickname, duration);
+            
+            // Also keep webhook for backward compatibility
+            DiscordWebhookService.Send(
+                $"{Session.EventName} | {Session.RpType.GetShortName()} | Игроки на сервере: {DiscordWebhookService.OnlineCount} | Время ивента: {DiscordWebhookService.FormatTimeSpan(duration)} | {Session.HostNickname}\n" +
+                "Ивент закончен.");
+
             return true;
         }
 

@@ -31,8 +31,9 @@ namespace EventHUD
         private PlayerEventHandlers      _handlers;
         private RadioEventHandlers       _radioHandlers;
         private RadioBroadcastFilter     _radioFilter;
+        private ScpProximityVoiceFilter  _scpProximityVoiceFilter;
         private MedicineEventHandlers    _medicineHandlers;
-        private AntiAdmCommandHandler    _antiAdmCommands;
+        public AntiAdmCommandHandler    AntiAdmCommands;
         private AntiAdmGrenadeHandler    _antiAdmGrenades;
 
         public AntiAdmGrenadeDensityService AntiAdmGrenadeDensity { get; private set; }
@@ -44,6 +45,11 @@ namespace EventHUD
         public Scp049Handler Scp049 { get; private set; }
         public Scp3114Handler Scp3114 { get; private set; }
         public Scp914Handler Scp914 { get; private set; }
+        public Scp096Handler Scp096 { get; private set; }
+        public AloneDummyService AloneDummy { get; private set; }
+        public HczArmoryService HczArmory { get; private set; }
+        public HelicopterCrushService HelicopterCrush { get; private set; }
+        public ScpTeslaProtectionService ScpTeslaProtection { get; private set; }
 
         public override void OnEnabled()
         {
@@ -62,8 +68,9 @@ namespace EventHUD
             _handlers          = new PlayerEventHandlers();
             _radioHandlers     = new RadioEventHandlers(Config);
             _radioFilter       = new RadioBroadcastFilter();
+            _scpProximityVoiceFilter = new ScpProximityVoiceFilter();
             _medicineHandlers  = new MedicineEventHandlers(Config);
-            _antiAdmCommands   = new AntiAdmCommandHandler(Config);
+            AntiAdmCommands   = new AntiAdmCommandHandler(Config);
             _antiAdmGrenades   = new AntiAdmGrenadeHandler(Config);
             AntiAdmGrenadeDensity = new AntiAdmGrenadeDensityService(Config);
             AntiLag            = new AntiAdmAntiLagService(Config);
@@ -73,11 +80,14 @@ namespace EventHUD
             Scp049             = new Scp049Handler(Config);
             Scp3114            = new Scp3114Handler(Config);
             Scp914             = new Scp914Handler(Config);
+            Scp096             = new Scp096Handler();
 
             // ── Player events ──
             Exiled.Events.Handlers.Player.Left                  += _handlers.OnLeft;
             Exiled.Events.Handlers.Player.SendingValidCommand   += _handlers.OnSendingValidCommand;
             Exiled.Events.Handlers.Player.Verified              += _handlers.OnVerified;
+            Exiled.Events.Handlers.Player.Escaping              += _handlers.OnEscaping;
+            Exiled.Events.Handlers.Player.TriggeringTesla       += _handlers.OnTriggeringTesla;
 
             // ── SCP events ──
             Exiled.Events.Handlers.Player.Hurting               += Scp106.OnHurting;
@@ -86,6 +96,7 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.ChangingRole          += Scp3114.OnChangingRole;
             Exiled.Events.Handlers.Player.ItemAdded             += Scp3114.OnItemAdded;
             Exiled.Events.Handlers.Player.Shooting              += Scp3114.OnShooting;
+            Exiled.Events.Handlers.Player.DroppingItem          += Scp049.OnDroppingItem;
             Exiled.Events.Handlers.Player.UsingItem             += Scp914.OnUsingItem;
             Exiled.Events.Handlers.Player.ChangingRole          += Scp914.OnChangingRole;
 
@@ -94,6 +105,7 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.ChangingRadioPreset   += _radioHandlers.OnChangingRadioPreset;
             Exiled.Events.Handlers.Player.UsingRadioBattery     += _radioHandlers.OnUsingRadioBattery;
             Exiled.Events.Handlers.Player.ReceivingVoiceMessage += _radioFilter.OnReceivingVoiceMessage;
+            Exiled.Events.Handlers.Player.ReceivingVoiceMessage += _scpProximityVoiceFilter.OnReceivingVoiceMessage;
             Exiled.Events.Handlers.Player.ChangingRole          += _radioHandlers.OnChangingRole;
 
             // ── Medicine events ──
@@ -101,7 +113,11 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.Hurting                += _medicineHandlers.OnHurting;
             Exiled.Events.Handlers.Player.UsedItem               += _medicineHandlers.OnUsedItem;
             Exiled.Events.Handlers.Player.UsingItem              += _medicineHandlers.OnUsingItem;
+#pragma warning disable CS0612 // Type or member is obsolete
+
             Exiled.Events.Handlers.Player.ItemAdded              += _medicineHandlers.OnItemAdded;
+#pragma warning restore CS0612 // Type or member is obsolete
+
             Exiled.Events.Handlers.Player.Died                   += _medicineHandlers.OnDied;
             Exiled.Events.Handlers.Player.ChangingRole           += _medicineHandlers.OnChangingRole;
             Exiled.Events.Handlers.Player.ReceivingEffect        += _medicineHandlers.OnReceivingEffect;
@@ -109,8 +125,8 @@ namespace EventHUD
 
             // ── Server events ──
             Exiled.Events.Handlers.Server.RoundStarted += OnRoundStarted;
-            Exiled.Events.Handlers.Player.SendingValidCommand += _antiAdmCommands.OnSendingValidCommand;
-            Exiled.Events.Handlers.Player.Handcuffing += _antiAdmCommands.OnHandcuffing;
+            Exiled.Events.Handlers.Player.SendingValidCommand += AntiAdmCommands.OnSendingValidCommand;
+            Exiled.Events.Handlers.Player.Handcuffing += AntiAdmCommands.OnHandcuffing;
 
             // ── Map events (AntiAdm) ──
             Exiled.Events.Handlers.Map.ExplodingGrenade += _antiAdmGrenades.OnExplodingGrenade;
@@ -126,6 +142,7 @@ namespace EventHUD
             ServerSpecificSettingsHandler.Register(Config);
             MedkitSSSHandler.Register();
             Scp106.RegisterSss();
+            Scp049ConditionService.Register();
             Scp049.RegisterSss();
             Scp914.RegisterSss();
 
@@ -142,6 +159,17 @@ namespace EventHUD
             AntiLag.Start();
             AntiDdos.Start();
             TpsOptimizer.Start();
+            Scp049.Start();
+            Scp096.Start();
+            ScpTeslaProtection = new ScpTeslaProtectionService();
+            Exiled.Events.Handlers.Player.TriggeringTesla += ScpTeslaProtection.OnTriggeringTesla;
+            Exiled.Events.Handlers.Player.Hurting += ScpTeslaProtection.OnHurting;
+            AloneDummy = new AloneDummyService();
+            AloneDummy.Start();
+            HczArmory = new HczArmoryService();
+            HczArmory.Start();
+            HelicopterCrush = new HelicopterCrushService();
+            Exiled.Events.Handlers.Server.RespawnedTeam += HelicopterCrush.OnRespawnedTeam;
 
             base.OnEnabled();
         }
@@ -152,6 +180,8 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.Left                  -= _handlers.OnLeft;
             Exiled.Events.Handlers.Player.SendingValidCommand   -= _handlers.OnSendingValidCommand;
             Exiled.Events.Handlers.Player.Verified              -= _handlers.OnVerified;
+            Exiled.Events.Handlers.Player.Escaping              -= _handlers.OnEscaping;
+            Exiled.Events.Handlers.Player.TriggeringTesla       -= _handlers.OnTriggeringTesla;
 
             // ── SCP events ──
             Exiled.Events.Handlers.Player.Hurting               -= Scp106.OnHurting;
@@ -160,6 +190,7 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.ChangingRole          -= Scp3114.OnChangingRole;
             Exiled.Events.Handlers.Player.ItemAdded             -= Scp3114.OnItemAdded;
             Exiled.Events.Handlers.Player.Shooting              -= Scp3114.OnShooting;
+            Exiled.Events.Handlers.Player.DroppingItem          -= Scp049.OnDroppingItem;
             Exiled.Events.Handlers.Player.UsingItem             -= Scp914.OnUsingItem;
             Exiled.Events.Handlers.Player.ChangingRole          -= Scp914.OnChangingRole;
 
@@ -168,6 +199,7 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.ChangingRadioPreset   -= _radioHandlers.OnChangingRadioPreset;
             Exiled.Events.Handlers.Player.UsingRadioBattery     -= _radioHandlers.OnUsingRadioBattery;
             Exiled.Events.Handlers.Player.ReceivingVoiceMessage -= _radioFilter.OnReceivingVoiceMessage;
+            Exiled.Events.Handlers.Player.ReceivingVoiceMessage -= _scpProximityVoiceFilter.OnReceivingVoiceMessage;
             Exiled.Events.Handlers.Player.ChangingRole          -= _radioHandlers.OnChangingRole;
 
             // ── Medicine events ──
@@ -175,7 +207,11 @@ namespace EventHUD
             Exiled.Events.Handlers.Player.Hurting                -= _medicineHandlers.OnHurting;
             Exiled.Events.Handlers.Player.UsedItem               -= _medicineHandlers.OnUsedItem;
             Exiled.Events.Handlers.Player.UsingItem              -= _medicineHandlers.OnUsingItem;
+#pragma warning disable CS0612 // Type or member is obsolete
+
             Exiled.Events.Handlers.Player.ItemAdded              -= _medicineHandlers.OnItemAdded;
+#pragma warning restore CS0612 // Type or member is obsolete
+
             Exiled.Events.Handlers.Player.Died                   -= _medicineHandlers.OnDied;
             Exiled.Events.Handlers.Player.ChangingRole           -= _medicineHandlers.OnChangingRole;
             Exiled.Events.Handlers.Player.ReceivingEffect        -= _medicineHandlers.OnReceivingEffect;
@@ -183,8 +219,8 @@ namespace EventHUD
 
             // ── Server events ──
             Exiled.Events.Handlers.Server.RoundStarted -= OnRoundStarted;
-            Exiled.Events.Handlers.Player.SendingValidCommand -= _antiAdmCommands.OnSendingValidCommand;
-            Exiled.Events.Handlers.Player.Handcuffing -= _antiAdmCommands.OnHandcuffing;
+            Exiled.Events.Handlers.Player.SendingValidCommand -= AntiAdmCommands.OnSendingValidCommand;
+            Exiled.Events.Handlers.Player.Handcuffing -= AntiAdmCommands.OnHandcuffing;
 
             // ── Map events (AntiAdm) ──
             Exiled.Events.Handlers.Map.ExplodingGrenade -= _antiAdmGrenades.OnExplodingGrenade;
@@ -217,6 +253,13 @@ namespace EventHUD
             AntiLag.Stop();
             AntiDdos.Stop();
             TpsOptimizer.Stop();
+            Scp049ConditionService.Unregister();
+            Scp049.Stop();
+            Scp096.Stop();
+            AloneDummy?.Stop();
+            Exiled.Events.Handlers.Server.RespawnedTeam -= HelicopterCrush.OnRespawnedTeam;
+            Exiled.Events.Handlers.Player.TriggeringTesla -= ScpTeslaProtection.OnTriggeringTesla;
+            Exiled.Events.Handlers.Player.Hurting -= ScpTeslaProtection.OnHurting;
 
             HudToggleService.Reset();
             HudNoticeService.Reset();
@@ -239,8 +282,13 @@ namespace EventHUD
             AntiDdos.Reset();
             HudNoticeService.Reset();
             Scp049?.ResetAll();
+            ScpProximityChat.Clear();
             ArmorItemDurabilityStorage.ClearAll();
             TpsOptimizer?.SnapshotMapItems();
+            EventHUD.Commands.TeslaCommand.Reset();
+            EventHUD.Commands.EscapeCommand.Reset();
+            AloneDummy?.Reset();
+            ScpTeslaProtection?.OnRoundRestart();
         }
 
         // ── AntiLag: при массовом спавне предметов (map editor) —
@@ -271,4 +319,3 @@ namespace EventHUD
         }
     }
 }
- 

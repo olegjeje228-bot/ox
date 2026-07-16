@@ -338,37 +338,37 @@ namespace EventHUD
         public bool AntiAdmEnabled { get; set; } = true;
 
         [Description("Максимальное кол-во Dummy на сервере")]
-        public int AntiAdmMaxDummies { get; set; } = 8;
+        public int AntiAdmMaxDummies { get; set; } = 40;
 
         [Description("Максимальный changescale для Dummy")]
-        public float AntiAdmDummyMaxScale { get; set; } = 5f;
+        public float AntiAdmDummyMaxScale { get; set; } = 25f;
 
         [Description("Максимальный changescale для игроков")]
-        public float AntiAdmMaxScale { get; set; } = 30f;
+        public float AntiAdmMaxScale { get; set; } = 150f;
 
         [Description("Максимальный ccolor для игроков (каждый канал)")]
-        public float AntiAdmMaxColor { get; set; } = 1000f;
+        public float AntiAdmMaxColor { get; set; } = 5000f;
 
         [Description("Максимум патронов одному игроку за один запрос")]
-        public int AntiAdmMaxAmmo { get; set; } = 2000;
+        public int AntiAdmMaxAmmo { get; set; } = 10000;
 
         [Description("Максимум патронов у одного игрока (суммарно)")]
-        public int AntiAdmMaxTotalAmmo { get; set; } = 700;
+        public int AntiAdmMaxTotalAmmo { get; set; } = 3500;
 
         [Description("Максимум основных предметов в инвентаре одного игрока")]
-        public int AntiAdmMaxInventoryItems { get; set; } = 8;
+        public int AntiAdmMaxInventoryItems { get; set; } = 60;
 
-        [Description("Максимум предметов у одного игрока (8 обычных + патроны, суммарно не более 20)")]
-        public int AntiAdmMaxTotalItems { get; set; } = 20;
+        [Description("Максимум предметов у одного игрока")]
+        public int AntiAdmMaxTotalItems { get; set; } = 150;
 
-        [Description("Максимум предметов, выдаваемых админом за 2 минуты")]
-        public int AntiAdmMaxItemsPerTwoMinutes { get; set; } = 25;
+        [Description("Максимум предметов, выдаваемых админом за 2 секунды")]
+        public int AntiAdmMaxItemsPerTwoMinutes { get; set; } = 200;
 
         [Description("Максимум патронов, выдаваемых админом за 5 секунд")]
-        public int AntiAdmMaxAmmoBurst { get; set; } = 500;
+        public int AntiAdmMaxAmmoBurst { get; set; } = 2500;
 
         [Description("Максимум запросов give/ga от админа за 5 секунд")]
-        public int AntiAdmMaxGiveRequestsBurst { get; set; } = 20;
+        public int AntiAdmMaxGiveRequestsBurst { get; set; } = 100;
 
         [Description("SteamID, которому разрешена команда mp tg")]
         public string AntiAdmMpTgAllowedSteamId { get; set; } = "76561199687703494@steam";
@@ -388,11 +388,14 @@ namespace EventHUD
         [Description("Максимум forceclass за секунду (массовый = 1 раз)")]
         public int AntiAdmMaxForceClassPerSecond { get; set; } = 3;
 
-        [Description("Максимум forceclass дамми за 3 секунды")]
-        public int AntiAdmMaxDummyForceClassPerMinute { get; set; } = 3;
+        [Description("Максимум смен роли Dummy через forceclass за 3 секунды")]
+        public int AntiAdmMaxDummyForceClassPerMinute { get; set; } = 8;
 
         [Description("КД на любую RA-команду, сек")]
         public float AntiAdmCommandCooldown { get; set; } = 0.1f;
+
+        [Description("Максимум спавнов дамми в минуту (spawn→kill→spawn обход AA-01)")]
+        public int AntiAdmMaxDummySpawnsPerMinute { get; set; } = 12;
 
         [Description("Максимум предметов дамми (не более 3, без патронов/гранат/018/фонариков)")]
         public int AntiAdmMaxDummyItems { get; set; } = 3;
@@ -572,5 +575,3 @@ namespace EventHUD
         public bool AntiDdosLayer3KnownOnly { get; set; } = true;
     }
 }
-
- 
